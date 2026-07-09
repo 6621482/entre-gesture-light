@@ -124,7 +124,15 @@ MediaPipe Hands 내부적으로는 대략 이런 그래프로 동작한다.
   ```python
   annotated_image = draw_landmarks_on_image(image.numpy_view(), detection_result)
   ```
-  - `mp.Image`는 OpenCV의 numpy 배열이 아니라 MediaPipe 자체 이미지 컨테이너 타입인데 `cv2.imshow`, `cv2.putText`, `np.copy()` 같은 OpenCV/numpy 함수들은 numpy 배열을 기대하므로 `numpy_view()`를 통해 `mp.Image` 안에 들어있는 실제 픽셀 데이터를 numpy 배열로 꺼내옴 
+  - `mp.Image`는 OpenCV의 numpy 배열이 아니라 MediaPipe 자체 이미지 컨테이너 타입인데 `cv2.imshow`, `cv2.putText`, `np.copy()` 같은 OpenCV/numpy 함수들은 numpy 배열을 기대하므로 `numpy_view()`를 통해 `mp.Image` 안에 들어있는 실제 픽셀 데이터를 numpy 배열로 꺼내옴
+- OpenCV와 MediaPipe의 이미지 저장 채널 순서 차이
+  - OpenCV: BRG 순서
+  - MediaPipe: RGB 순서
+  - 예제
+    ```
+    cv2.imshow("Hand Landmarker Result", cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR))
+    ```
+    - 이미지를 MediaPipe로 읽었기 때문에 `cv2.cvtColor()`를 통해서 변환해줘야 함 
 
 ## 10. 다음에 해야할 것
 - `min_hand_detection_confidence` vs `min_tracking_confidence` 값을 바꿔가며 실제 인식 안정성 차이 실험
