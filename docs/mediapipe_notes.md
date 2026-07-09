@@ -105,7 +105,7 @@ MediaPipe Hands 내부적으로는 대략 이런 그래프로 동작한다.
 - `mp.solutions.drawing_utils`: 구버전, `landmark_pb2` protobuf 형식으로 변환해야 넘길 수 있음
 - `mp.tasks.vision.drawing_utils`: 신버전(Tasks API 전용), 변환 없이 `hand_landmarks`를 바로 넘겨도 됨 — 실제 공식 콜랩 노트북이 사용하는 방식
 
-## 8. 첫 실습 결과 
+## 8. 첫 실습 결과 (hands_example.py)
 - 코드: 공식 Colab 노트북(STEP 1~5) + draw_landmarks_on_image 함수를 로컬용으로 그대로 사용 (cv2_imshow만 cv2.imshow로 교체)
 - 테스트 사진 : 엄지만 편 상태
 - 결과 : 21개 랜드마크 정상 감지, handedness "Right" 정확히 인식, 손가락별로 다른 색으로 자동 시각화됨
@@ -116,6 +116,15 @@ MediaPipe Hands 내부적으로는 대략 이런 그래프로 동작한다.
 - Tasks API가 왜 만들어졌는지 이해함 — MediaPipe Framework(그래프 기반 C++ 엔진)가 너무 로우레벨이라, Solutions API(태스크마다 API 제각각) → Tasks API(모든 태스크 동일한 4단계 패턴)로 발전
 - import 스타일 두 가지 (`from mediapipe.tasks import python` 방식 vs `mp.tasks.vision.XXX` 직접 접근 방식)가 완전히 같은 클래스를 가리킨다는 것 확인 — 프로젝트 안에서는 전자로 통일하기로 함
 - 랜드마크 좌표가 정규화된 값이라는 것 -> 실제 픽셀 위치로 쓰려면 이미지 width/height를 곱해서 변환해야 함
+- `BaseOptions` vs `HandLandmarkerOptions`
+  - `BaseOptions`: MediaPipe Tasks 전체가 공유하는 공통 설정 (모델 파일 경로, 실행 디바이스 같은 "어떤 모델을 어떻게 로드/실행할지"에 대한 부분)
+  - `HandLandmarkerOptions`: 손 인식 전용 설정 (`num_hands`, `running_mode`, `min_hand_detection_confidence` 등), 이 작업만의 동작방식
+  - 모든 Tasks가 같은 패턴을 재사용하게 만든 설계
+- image.numpy_view()가 필요한 이유
+  ```python
+  annotated_image = draw_landmarks_on_image(image.numpy_view(), detection_result)
+  ```
+  - `mp.Image`는 OpenCV의 numpy 배열이 아니라 MediaPipe 자체 이미지 컨테이너 타입인데 `cv2.imshow`, `cv2.putText`, `np.copy()` 같은 OpenCV/numpy 함수들은 numpy 배열을 기대하므로 `numpy_view()`를 통해 `mp.Image` 안에 들어있는 실제 픽셀 데이터를 numpy 배열로 꺼내옴 
 
 ## 10. 다음에 해야할 것
 - `min_hand_detection_confidence` vs `min_tracking_confidence` 값을 바꿔가며 실제 인식 안정성 차이 실험
