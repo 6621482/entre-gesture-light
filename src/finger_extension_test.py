@@ -5,22 +5,7 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import time
 
-# 랜드마크 인덱스 상수화 
-WRIST = 0
-FINGER_EXTENDED_THRESHOLD = 1.5
-THUMB_EXTENDED_THRESHOLD = 1
-
-FINGERS = {
-    "검지": (5, 8),
-    "중지": (9, 12),
-    "약지": (13, 16),
-    "소지": (17, 20),
-}
-
-# 엄지는 별도 블록 (기준점: pinky MCP) -> 엄지는 손바닥과 평행하게 움직이므로 다른 기준점이 필요함 
-PINKY_MCP = 17  # 주먹을 쥐어도 손목에서 많이 안 멀어지므로 새끼손가락 (17번)을 기준으로 함
-THUMB_MCP = 2
-THUMB_TIP = 4
+from finger_state import get_finger_ratios, get_finger_states
 
 mp_hands = mp.tasks.vision.HandLandmarksConnections
 mp_drawing = mp.tasks.vision.drawing_utils
@@ -61,11 +46,6 @@ def draw_landmarks_on_image(rgb_image, detection_result):
         )
     return annotated_image
 
-def calculate_distance(landmark1, landmark2):
-    # landmark는 .x, .y, .z 속성을 가진 객체 (0~1 정규화된 값)
-    # 유틀리드 거리 공식: sqrt((x2 - x1)^2 + (y2 - y1)^2 + (z2 - z1)^2)
-    return np.sqrt((landmark2.x - landmark1.x) ** 2 + (landmark2.y - landmark1.y) ** 2 + (landmark2.z - landmark1.z) ** 2)
-
 base_options = python.BaseOptions(model_asset_path="../hand_landmarker.task")
 options = vision.HandLandmarkerOptions(base_options=base_options, num_hands=2, running_mode=vision.RunningMode.VIDEO)
 detector = vision.HandLandmarker.create_from_options(options)
@@ -93,29 +73,15 @@ while cap.isOpened():
 
     if detection_result.hand_world_landmarks:
         hand_world_landmarks = detection_result.hand_world_landmarks[0]  # 첫 번째 손의 랜드마크 가져오기
-        wrist = hand_world_landmarks[WRIST]
         
-        pinky_mcp = hand_world_landmarks[PINKY_MCP]
-        thumb_mcp = hand_world_landmarks[THUMB_MCP]
-        thumb_tip = hand_world_landmarks[THUMB_TIP]
-            
-        thumb_tip_dist = calculate_distance(pinky_mcp, thumb_tip)
-        thumb_mcp_dist = calculate_distance(pinky_mcp, thumb_mcp)
-        thumb_ratio = thumb_tip_dist / thumb_mcp_dist if thumb_mcp_dist != 0 else 0
-    
-        thumb_status = "펴짐" if thumb_ratio > THUMB_EXTENDED_THRESHOLD else "굽힘"
-        print(f"엄지: {thumb_ratio:.2f} ({thumb_status})")
-
-        for finger_name, (mcp_idx, tip_idx) in FINGERS.items():
-            mcp = hand_world_landmarks[mcp_idx]
-            tip = hand_world_landmarks[tip_idx]
-
-            tip_dist = calculate_distance(wrist, tip)
-            mcp_dist = calculate_distance(wrist, mcp)
-            ratio = tip_dist / mcp_dist if mcp_dist != 0 else 0
-            
-            status = "펴짐" if ratio > FINGER_EXTENDED_THRESHOLD else "굽힘"
-            print(f"{finger_name}: {ratio:.2f} ({status})")
+        # 예전엔 여기서 거리/비율을 직접 계산했는데, 그 로직은 finger_state.py로 검증 완료 후 이동함.
+        # 이 스크립트는 이제 threshold 값이 실제로 잘 맞는지 눈으로 확인하는 용도로 사용
+        # 판정 결과뿐만 아니라 원본 비율 숫자도 같이 찍음
+        ratios = get_finger_ratios(hand_world_landmarks)
+        finger_states = get_finger_states(ratios)
+        for finger_name, ratio in ratios.items():
+            state = "펴짐" if finger_states[finger_name] else "굽힘"
+            print(f"{finger_name}: {ratio:.2f} ({state})")
 
     cv2.imshow("Hand Landmarker Webcam", cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR))
 
