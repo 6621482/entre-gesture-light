@@ -5,3 +5,4 @@ __pycache__/
 .DS_Store
 .env
 hand_landmarker.task
+src/confidence_experiment*.mp4
