@@ -15,6 +15,11 @@ import math
 
 from finger_state import get_finger_ratios, get_finger_states
 from gesture import classify_gesture, pinch_to_brightness
+from virtual_led import VirtualLight, LEDVisualizer
+
+light = VirtualLight()
+visualizer = LEDVisualizer(light)
+visualizer.start()
 
 mp_hands = mp.tasks.vision.HandLandmarksConnections
 mp_drawing = mp.tasks.vision.drawing_utils
@@ -56,13 +61,23 @@ def draw_landmarks_on_image(rgb_image, detection_result):
     return annotated_image
 
 _last_applied = None  # 마지막으로 적용된 값 
+_last_power = None
 
 def apply_brightness(value: int):
     global _last_applied
     if value != _last_applied:
-        print(f"[밝기 적용] {value}%")
+        light.set_brightness(value)
         _last_applied = value
     # 나중에 이 부분만 실제 행동으로 교체
+
+def apply_power(gesture_name: str):
+    global _last_power
+    if gesture_name == "ON" and _last_power != "ON":
+        light.turn_on()
+        _last_power = "ON"
+    elif gesture_name == "OFF" and _last_power != "OFF":
+        light.turn_off()
+        _last_power = "OFF"
 
 base_options = python.BaseOptions(model_asset_path="../hand_landmarker.task")
 options = vision.HandLandmarkerOptions(base_options=base_options, num_hands=2, running_mode=vision.RunningMode.VIDEO)
@@ -149,6 +164,7 @@ def main():
                     (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
                     FONT_SIZE, (0, 255, 0), FONT_THICKNESS, cv2.LINE_AA,
                 )
+                apply_power(gesture_name)
 
         cv2.putText(
                 frame, f"FPS: {fps_value:.2f}",
